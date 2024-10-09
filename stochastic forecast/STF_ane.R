@@ -386,18 +386,7 @@ SSB.Upper <- as.data.frame(forecastSummary[20])   #SSB - 1.96SD
 Fvalue <- as.data.frame(forecastSummary[30])
 Recr <- as.data.frame(forecastSummary[38])
 
-# Filtrar los datos entre 1989 y 2026
-data <- subset(SSB, SpawnBio.Yr >= 1989)
 
-# Crear la gráfica con ggplot2
-ggplot(data, aes(x = SpawnBio.Yr, y = SpawnBio.replist1)) +
-  geom_line(aes(color = ifelse(SpawnBio.Yr <= 2023, "1989-2023", "2024-2026")), size = 1) +
-  scale_color_manual(values = c("1989-2023" = "blue", "2024-2026" = "red")) +
-  labs(title = "SSB from 1989 to 2026", x = "Year", y = "SSB") +
-  theme_minimal() +
-  theme(legend.title = element_blank())
-
- #revisar recruitment deviation!!!!
 
 
 ## --  WRITE ALL IN A DATAFRAME
@@ -459,3 +448,90 @@ save(dfSTFSummary, file=paste0("model/STF/STFSummary",esc,".Rdata"))
 # 
 write.csv(dfSTFSummary, paste0("model/STF/STFSummary",esc,".csv"))
 
+# Filtrar los datos entre 1989 y 2026
+ssb_0 <- subset(SSB, SpawnBio.Yr >= 1989)
+f_0 <- subset(Fvalue, Fvalue.Yr >= 1989)
+R_0 <- subset(Recr, recruits.Yr >= 1989)
+
+ssb_2<-melt(ssb_0,id.vars = c("SpawnBio.Label",'SpawnBio.Yr'))
+f_2<-melt(f_0,id.vars = c("Fvalue.Label",'Fvalue.Yr'))
+R_2<-melt(R_0,id.vars = c("recruits.Label",'recruits.Yr'))
+
+
+#'*==========================================================================*
+# Definir los multiplicadores F para cada modelo
+FMult <- c(0, 1, 1.2, 1.6, 2)  # Correspondiente a cada "replist" en forecastModels
+
+# Crear una lista para almacenar los resultados
+catchend <- map2(forecastModels, FMult, function(output, fmult_value) {
+  
+  output$timeseries %>% 
+    filter(Yr >= 1989) %>%  # Filtrar por el año
+    select("Yr", starts_with("dead(B)")) %>%  # Seleccionar columnas que comienzan con "dead(B)"
+    mutate(Total_deadB = `dead(B):_1` + `dead(B):_2` + `dead(B):_3` + `dead(B):_4`) %>%  # Calcular el total de dead(B)
+    mutate(FMult = fmult_value) %>%  # Agregar la columna FMult con el valor correspondiente
+    select(Yr, Total_deadB, FMult) %>%  # Seleccionar las columnas importantes
+    group_by(Yr) %>%  # Agrupar por año
+    summarise(Sum_Total_deadB = sum(Total_deadB), FMult = first(FMult))  # Sumar Total_deadB y mantener FMult
+})
+catchend2<-plyr::ldply(catchend,data.frame)
+
+
+###############################################################################
+library(ggplot2)
+library(dplyr)
+library(purrr)
+library(reshape2)
+
+# Crear los datos de SSB, Fvalue, y Recruits
+ssb_2 <- melt(ssb_0, id.vars = c("SpawnBio.Label", "SpawnBio.Yr"))
+f_2 <- melt(f_0, id.vars = c("Fvalue.Label", "Fvalue.Yr"))
+R_2 <- melt(R_0, id.vars = c("recruits.Label", "recruits.Yr"))
+
+# Agregar un indicador de la variable para cada dataset
+ssb_2$variable_group <- "SSB"
+f_2$variable_group <- "F apical"
+R_2$variable_group <- "Recruits"
+
+# Renombrar las columnas para tener consistencia
+names(ssb_2) <- c("Label", "Yr", "variable", "value", "variable_group")
+names(f_2) <- c("Label", "Yr", "variable", "value", "variable_group")
+names(R_2) <- c("Label", "Yr", "variable", "value", "variable_group")
+
+# Combinar los tres datasets en uno solo
+combined_data <- bind_rows(ssb_2, f_2, R_2)
+
+
+# Paso 1: renombrar la columna
+catchend3 <- catchend2 %>%
+  dplyr::rename(value = Sum_Total_deadB)
+
+# Paso 2: agregar la nueva columna
+catchend3 <- catchend3 %>%
+  mutate(variable_group = "Catch",
+         variable=.id)
+
+# Combinar todo en un solo conjunto de datos
+final_combined_data <- bind_rows(combined_data, catchend3)
+final_combined_data$variable <- sub(".*\\.(replist[0-9]+)", "\\1", final_combined_data$variable)
+
+# Definir las etiquetas de la leyenda
+all.scen <- c("0", "1", "1.2", "1.6", "2")
+legend_labels <- paste0("FMult_", all.scen)
+
+# Crear el gráfico con todas las variables y facet_wrap para separarlas
+ggplot(subset(final_combined_data, Yr < 2026), aes(x = Yr, y = value, color = variable)) +
+  geom_point()+
+  geom_line(size = 1) + 
+  # Agregar línea negra desde 1989 hasta 2023 para el primer escenario de SSB
+  geom_line(data = subset(final_combined_data, Yr <= 2023 & variable == "replist1"), 
+            aes(x = Yr, y = value), color = "black", size = 1) + 
+  geom_point(data = subset(final_combined_data, Yr <= 2023 & variable == "replist1"), 
+           aes(x = Yr, y = value), color = "black") +
+  labs(title = "", x = "Año", y = "") +
+  theme_minimal() +
+  theme(legend.title = element_blank()) +
+  # Usar una escala manual de colores y aplicar las etiquetas personalizadas de la leyenda
+  scale_color_manual(values = c("red", "green", "blue", "cyan", "purple"), 
+                     labels = legend_labels) +
+  facet_wrap(~variable_group, scales = "free_y")  # Facetear por grupo de variables (SSB, Fvalue, Recruits, Catch)
