@@ -35,8 +35,8 @@ sourceTAF("data")
 sourceTAF("model_01_run")
 
  esc<-"S1.0_sigmaR_0.33_h0.8_selP10_qPela1_forecast" 
- run.dir  <- paste0("model/run/",esc)
- output <- r4ss::SS_output(dir = run.dir,forecast=T)
+ # run.dir  <- paste0("model/run/",esc)
+ # output <- r4ss::SS_output(dir = run.dir,forecast=T)
 
 
 sourceTAF("output_01_run")
@@ -49,6 +49,7 @@ sourceTAF("report_02_retro")
 
 
 # run reporte.Rmd 
+mkdir("Report_rmd")
   render("Report_SS3_quarter_with_age_data_MR_prueba_mod_2.Rmd", 
          output_file = paste0("Report_rmd/Report_",esc,".pdf"))
 
