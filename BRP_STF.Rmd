@@ -125,11 +125,12 @@ dfSTFSummary$FMult<-dfSTFSummary$Val
 dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024/1000000
 dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025/1000000
 
-table<-round(dfSTFSummary[,c(15,7,9,10,3,5,13,14,11)],3)
-names(table)<-c("Mult","F","Rec_2024","Rec_2025","SSB_2024","SSB_2025","pBlim_2024","pBlim_2025","Catch_2024")
+table<-round(dfSTFSummary[,c(15,7,11,9,10,3,5,13,14)],3)
+names(table)<-c("Mult", "F apical2024","Catch2024", "Rec2024", "Rec2025", 
+                "SSB2024", "SSB2025", "p(SSB2024<Blim)", "p(SSB2025<Blim)")
 
-kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 1, align = 'c',
-      caption = "\\label{tb:stf} Management options  from the stochastic short-term forecasts at fishing mortalities levels used for the different catch scenario options in the advice") %>%
+kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, align = 'c',
+      caption = "\\label{tb:stf} Short-term forecast management options. Catch and SSB in tonnes") %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 
 ```

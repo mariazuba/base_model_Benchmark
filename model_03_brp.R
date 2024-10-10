@@ -1,6 +1,12 @@
 #'*=============================================================================*
 # Biological Reference Points ----
 #'*=============================================================================*
+# Script information ------------------------------------------------------
+
+# Authors: María José Zúñiga
+
+# Date: 2024
+
 
 rm(list=ls())
 run_esc<-"boot/data/run/" 
@@ -23,12 +29,14 @@ wd <- getwd()
 # Load data ---------------------------------------------------------------
 
 # input data
+model<-"model/run/"
 data<-"data/run/"
 output<-"output/run/"
 report<-"report/run/"
 brp<-"output/brp/"
 list.files(output)
 
+run_model<-paste0(model,esc)
 run_data<-paste0(data,esc)
 run_out<-paste0(output,esc)
 path_rep<-paste0(report,esc)
@@ -40,9 +48,15 @@ mkdir(path_brp)
 load(paste0(run_out,"/output.RData"))
 load(paste0(run_data,"/inputData.RData")) 
 
+#read forecast
+fore <- r4ss::SS_readforecast(file = file.path(run_model, "forecast.ss"),verbose = FALSE)
+
+
 #read in assessment ouput
 replist <- output
 stdreptlist<-data.frame(replist$derived_quants[,1:3])
+
+
 
 # Define the range of years to include
 start_year <- dat$dat$styr
@@ -124,7 +138,10 @@ SSB_Btgt<-replist$derived_quants["SSB_Btgt","Value"] #SSB_Btgt=Blim
 SPR_Btgt<-replist$derived_quants["SPR_Btgt","Value"] 
 Flim <- replist$derived_quants["annF_Btgt","Value"] #annF_Btgt=Flim
 
-row.names(replist$derived_quants)
+#fore$Btarget
+r4ss::SS_writeforecast(fore, dir = file.path(path_stf,"Forecast_Files"), 
+                       file = paste0("Forecast",FMult_names[i], ".ss"), 
+                       overwrite = TRUE, verbose = FALSE)
 
 save(min_value,min_sd,min_year,
      last_year,last_value,last_sd,
