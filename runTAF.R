@@ -41,6 +41,8 @@ sourceTAF("model_02_retro")
 sourceTAF("output_02_retro")
 sourceTAF("report_02_retro")
 
+sourceTAF("model_03_brp")
+sourceTAF("model_04_stf")
 
 # run reporte.Rmd 
 mkdir("Report_rmd")
