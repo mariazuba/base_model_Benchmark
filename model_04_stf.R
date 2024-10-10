@@ -1,6 +1,6 @@
 # Script information ------------------------------------------------------
 
-# Authors: 
+# Authors: María José Zúñiga
 
 # Date: 2024
 
@@ -14,117 +14,56 @@ library(doParallel)
 library(foreach)
 library(tidyverse)
 
+run_esc<-"boot/data/run/" 
+list.files(run_esc, full.names = TRUE)
+esc<-readLines(paste0(run_esc,"Esc.txt")) 
 
-icesTAF::mkdir("model/STF")
-icesTAF::mkdir("model/bpr")
-esc<-"S2"
-mkdir(paste0("model/STF/",esc))
-mkdir(paste0("model/STF/",esc,"/Forecast_Files"))
+# input data
+model<-"model/run/"
+data<-"data/run/"
+output<-"output/run/"
+report<-"report/run/"
+brp<-"output/brp/"
+stf<-"model/stf/"
 
-ESC_model<-"S1.0_sigmaR_0.33_h0.8_selP10_qPela1_forecast"
+run_model<-paste0(model,esc)
+run_data<-paste0(data,esc)
+run_out<-paste0(output,esc)
+path_rep<-paste0(report,esc)
+path_brp<-paste0(brp,esc)
+path_stf<-paste0(stf,esc)
+
+mkdir(path_stf)
+
+load(paste0(run_out,"/output.RData"))
+load(paste0(run_data,"/inputData.RData")) 
+load(paste0(path_brp,"/brp.Rdata")) 
+# working directory
+mkdir(paste0(path_stf,"/Forecast_Files"))
+
 #number of years (-1) over which to average weights, selectivity
 Naver = 2  # most recent 3-years
-
-model<-file.path("model","run",ESC_model)
-fore<-file.path( "model","STF",esc, "forecast.ss")
 #Create scenarios
-file.copy(file.path("model","run",ESC_model, "forecast.ss"),
-          file.path( "model","STF",esc, "forecast.ss"))
+file.copy(file.path(paste0(run_model, "/forecast.ss")),
+          file.path( paste0(path_stf, "/forecast.ss")))
 
 #read in the forecast file
-fore <- r4ss::SS_readforecast(file = file.path("model", "STF",esc, "forecast.ss"),verbose = FALSE)
-
-#run assessment
-# wd <- model
-# system(wd)
-# system(paste0("chmod 755 ",wd,"/ss3_linux"))
-# r4ss::run(dir=model, exe="ss3_linux", skipfinished=FALSE, show_in_console =T)
-
+fore <- r4ss::SS_readforecast(file = file.path(path_stf, "forecast.ss"),verbose = FALSE)
 
 #read in assessment ouput
-replist <- SS_output(dir = model, verbose=TRUE, printstats=TRUE) ## read
+replist <- output
 stdreptlist<-data.frame(replist$derived_quants[,1:3])
 
 # Define the range of years to include
-start_year <- 1989
-end_year <- 2023
-
-# Define a function to process data
-process_data <- function(data, pattern, value_col, stddev_col = NULL) {
-  # Ensure the required column exists
-  if (!"Label" %in% colnames(data)) {
-    stop("The 'Label' column is missing in the data frame.")
-  }
-  
-  filtered_data <- data %>%
-    filter(grepl(pattern, Label)) %>%
-    mutate(year = as.numeric(sub(paste0(pattern, "_"), "", Label))) %>%
-    filter(!is.na(year) & year >= start_year & year <= end_year) %>%
-    select(year, Value, StdDev)
-  
-  # Remove StdDev column if not needed
-  if (is.null(stddev_col)) {
-    filtered_data <- filtered_data %>% select(-StdDev)
-  }
-  
-  return(filtered_data)
-}
-
-# Process 'summary' data
-process_summary_data <- function(data, pattern, value_col) {
-  if (!"V1" %in% colnames(data)) {
-    stop("The 'V1' column is missing in the summary data frame.")
-  }
-  
-  filtered_data <- data %>%
-    filter(grepl(pattern, V1)) %>%
-    mutate(year = as.numeric(sub(paste0(pattern, "_"), "", V1))) %>%
-    filter(!is.na(year) & year >= start_year & year <= end_year) %>%
-    select(year, value_col)
-  
-  return(filtered_data)
-}
-
-# Apply the function to each dataset
-ssb <- process_data(stdreptlist, "SSB", "Value", "StdDev")
-ssb$type<-"SSB"
-recr <- process_data(stdreptlist, "Recr", "Value", "StdDev")
-recr$type<-"Rt"
-ft <- process_data(stdreptlist, "F", "Value", "StdDev")
-ft$type<-"Ft"
-
-# Find the minimum value and the corresponding year within the filtered range.
-min_value <- min(ssb$Value)
-min_sd <-ssb$StdDev[which.min(ssb$Value)]
-min_year <- ssb$year[which.min(ssb$Value)]
-last_year<-end_year
-last_value<-ssb$Value[ssb$year==last_year]
-last_sd<-ssb$StdDev[ssb$year==last_year]
-sigma<-sqrt(log(1+(last_sd/last_value)^2)) # sigma  is the estimated standard deviation of ln(SSB) in the last year of the assessment, accounting for the uncertainty in SSB for the terminal year. 
-
+start_year <- dat$dat$styr
+end_year <- dat$dat$endyr
+nfleet<-dat$dat$Nfleet
 #'*=============================================================================*
 # Reference Points ----
+# from load(paste0(path_brp,"/brp.Rdata"))
 #'*=============================================================================*
-Blim <- min_value
-Bpa <-exp(1.645*sigma)*Blim
-
-# Reference values for forecast Flim
-Bvirgin<-replist$derived_quants["SSB_Virgin","Value"] 
-SSBunfished<-replist$derived_quants["SSB_unfished","Value"] 
-ratioBtarget<-Blim/Bvirgin
-ratioBtarget2<-Blim/SSBunfished
-SSB_Btgt<-replist$derived_quants["SSB_Btgt","Value"] #SSB_Btgt=Blim
-SPR_Btgt<-replist$derived_quants["SPR_Btgt","Value"] 
-Flim <- replist$derived_quants["annF_Btgt","Value"] #annF_Btgt=Flim
-
-row.names(replist$derived_quants)
-
-save(min_value,min_sd,min_year,
-     last_year,last_value,last_sd,
-     sigma,Blim,Bpa, 
-     ssb,ft,
-     file=paste0("model/bpr/bpr_",ESC_model,".Rdata"))
-
+Blim <- Blim
+Bpa <-Bpa
 
 #'*=============================================================================*
 # Short-term forecast ----
@@ -140,11 +79,16 @@ Nfor <- fore$Nforecastyrs
  endyear <- max(dat$Yr) - Nfor
  year_inter <- endyear+1
 # 
-# # SET Fsq i) average of the last Nfor+1 years across seasons and fleets ii)last year
+#'*==========================================================================*
+# SET Fsq 
+# Options:  i) average of the last Nfor+1 years across seasons and fleets ii) use last year 
+#'*==========================================================================*
+
 data <- subset(dat,dat$Yr>=startyear & dat$Yr<=endyear)
 
+# Option i) use mean 4 year in F for STF  by fleet
  Fsqmean <- aggregate(.~Seas,data=data,mean) # i) use mean 4 year in F for STF 
-# 
+# Option ii) use last year by fleet
  Fsq1 <- data$SEINE_Q1[data$Yr==endyear]   #  ii) use last year
  Fsq2 <- data$SEINE_Q2[data$Yr==endyear] # ii) use last year
  Fsq3 <- data$SEINE_Q3[data$Yr==endyear] #  ii) use last year
@@ -164,34 +108,22 @@ data_int <- dat %>% filter(Yr>=startyear & Yr<=endyear) %>%
   summarise_all(mean)
 
 ## input intermediate year data
-nfleet=4
 dimen <- dim(data_int)
 Year  <- rep(endyear+1,dimen[1]*(dimen[2]-1))
 fore_dat_int       <- data.frame(Year)
 fore_dat_int$Seas  <- data_int$Seas
-fore_dat_int$Fleet <- 1:nfleet#rep(1:nfleet, each = length(data_int$Seas))
-#fore_dat_int$F     <- c(Fsq1,Fsq2,Fsq3,Fsq4) #as.vector(as.matrix(Fsqmean[,-which(names(Fsqmean)=="Seas")]))
+fore_dat_int$Fleet <- 1:nfleet
+#fore_dat_int$F     <- c(Fsq1,Fsq2,Fsq3,Fsq4) 
 fore_dat_int$F     <- as.vector(as.matrix(Fsqmean[,-which(names(Fsqmean)==c("Seas","Yr"))]))
 fore_dat_int<-fore_dat_int[fore_dat_int$F != 0, ]
 fore_dat_int
 #####------------
 ###  Using apical F multipliers are exact for Fsq multipliers 
-vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*5.93287,1*3.977834)
+vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*3.977834,1*5.93287)
 
-
-## search for multipliers for BRP
-
-# Search fishing mortality multipliers
-# fsq=Fsq
-# a=Fmsy/fsq
-# b=Fpa/fsq
-# c=Flim/fsq
-# # s1=20
-# # s2=20
-# # s3=20
-# # FMult <- c(seq(0,a,length.out=s1),seq(a+0.01,b,length.out=s1),seq(b+0.01,c+0.05,length.out=s3))
-
+#'*============================================================================*
 ### Fmultipliers with Beverton-Holt 
+#'*============================================================================*
 #'*Multipliers that adjust the value of F to achieve an SSB in 2025 equal to SSBlim*
 start_value1 <- 5.93287
 end_value1 <- 5.93288
@@ -200,21 +132,19 @@ vector1 <- seq(from = start_value1, to = end_value1, length.out = 5)
 start_value2 <- 3.977812
 end_value2 <- 3.977855
 vector2 <- seq(from = start_value2, to = end_value2, length.out = 5)
-# Define the start and end values
-# start_value3 <- 3.147222222
-# end_value3 <- 3.161111111
-# vector3 <- seq(from = start_value3, to = end_value3, length.out = 5)
 
-#FMult <- c(vector0, vector1, vector2,vector3)
+#FMult <- c(vector0, vector1, vector2)
 FMult <- c(vector0)
 
 FMult_names <- paste0("FMult",FMult)
 l_FMult <- length(FMult)
 
+#'*============================================================================*
 ##### ----- SET GEOMEAN Recruitment (use or not depends on uncertainty)
+#'*============================================================================*
 # Get assessment outputs for geomean recruitment
 year_inter <- endyear+1
-ass.sum <- SSsummarize(SSgetoutput(dirvec=model))
+ass.sum <- SSsummarize(SSgetoutput(dirvec=run_model))
 hist.rec <- as.data.frame(ass.sum$recruits) %>% filter(Yr %in% 2021:(year_inter-1)) %>% .[,1]  # all series 2021-2023
 virg.rec <- as.data.frame(ass.sum$recruits) %>% filter(Label == "Recr_Virgin") %>% .[,1]
 
@@ -223,11 +153,11 @@ gmrec <- exp(mean(log(hist.rec)))
 
 aux=fore_dat_int # F last year
 
-### CREATE forecast.ss with interim year F
+#'*============================================================================*
+### CREATE forecast.ss 
+#'*============================================================================*
  for (i in 1:l_FMult){
- #fore_dat=fore_dat_int;
   aux_fore=fore_dat_int
-   #for(j in 1:(Nfor-1)){
    j<-1
      aux_fore$Year=endyear+j
      aux_fore$F=FMult[i]*aux$F
@@ -235,7 +165,6 @@ aux=fore_dat_int # F last year
      for(j in 2:(Nfor-1)){ 
        aux_fore$Year=endyear+j
        aux_fore$F=FMult[i]*aux$F
-      # fore_dat=aux_fore
      fore_dat=rbind(fore_dat,aux_fore)
    }
   j=Nfor
@@ -250,7 +179,7 @@ aux=fore_dat_int # F last year
   #fore$fcast_rec_val <- 1#gmrec/virg.rec # geomean / virgin rec # comment lines to use model BH
   
   ## write all forecast files/scenarios
-  r4ss::SS_writeforecast(fore, dir = file.path("model","STF",esc,"Forecast_Files"), 
+  r4ss::SS_writeforecast(fore, dir = file.path(path_stf,"Forecast_Files"), 
                          file = paste0("Forecast",FMult_names[i], ".ss"), 
                          overwrite = TRUE, verbose = FALSE)
 }
@@ -259,17 +188,17 @@ aux=fore_dat_int # F last year
 # create forecast folder and subfolders
 for (i in 1:l_FMult){
   
-  dir.FMult <- file.path("model","STF",esc,paste0("FMult",FMult[i]))
+  dir.FMult <- file.path(path_stf,paste0("FMult",FMult[i]))
   dir.create(path = dir.FMult, showWarnings = F, recursive = T)
   
-  file.copy(file.path(model, "starter.ss"), file.path(dir.FMult, "starter.ss"))
-  file.copy(paste(model, "control.SS", sep="/"), paste(dir.FMult, "control.SS", sep="/"))
-  file.copy(paste(model, "data.SS", sep="/"), paste(dir.FMult, "data.SS", sep="/"))	
-  file.copy(paste(model, "ss3_linux", sep="/"), paste(dir.FMult, "ss3_linux", sep="/"))
-  file.copy(paste(model, "wtatage.ss", sep="/"), paste(dir.FMult, "wtatage.ss", sep="/"))
+  file.copy(file.path(run_model, "starter.ss"), file.path(dir.FMult, "starter.ss"))
+  file.copy(paste(run_model, "control.SS", sep="/"), paste(dir.FMult, "control.SS", sep="/"))
+  file.copy(paste(run_model, "data.SS", sep="/"), paste(dir.FMult, "data.SS", sep="/"))	
+  file.copy(paste(run_model, "ss3_linux", sep="/"), paste(dir.FMult, "ss3_linux", sep="/"))
+  file.copy(paste(run_model, "wtatage.ss", sep="/"), paste(dir.FMult, "wtatage.ss", sep="/"))
   
   #copy the forecast file
-  file.copy(paste("model","STF",esc,"Forecast_Files",paste0("ForecastFMult",FMult[i],".ss") , sep="/"),
+  file.copy(paste(path_stf,"Forecast_Files",paste0("ForecastFMult",FMult[i],".ss") , sep="/"),
             paste(dir.FMult, "forecast.ss", sep="/"))
 }
 
@@ -278,15 +207,15 @@ for (i in 1:l_FMult){
 all.models <- c(paste0("FMult", FMult))
 
 for (m in all.models){
-wd <- model
+wd <- path_stf
 system(wd)
 system(paste0("chmod 755 ",wd,"/ss3_linux")) 
-r4ss::run(dir=file.path("model","STF",esc,m), exe="ss3_linux", skipfinished=FALSE, show_in_console =T)
+r4ss::run(dir=file.path(path_stf,m), exe="ss3_linux", skipfinished=FALSE, show_in_console =T)
 }
 
 #retrieve and summarise outputs
-forecastModels <- r4ss::SSgetoutput(dirvec = file.path("model","STF",esc,c(FMult_names)), getcovar = FALSE)
-save(forecastModels, file=file.path("model","STF",esc,"STF.Rdata"))
+forecastModels <- r4ss::SSgetoutput(dirvec = file.path(path_stf,c(FMult_names)), getcovar = FALSE)
+save(forecastModels, file=file.path(path_stf,"STF.Rdata"))
 
 forecastSummary <- r4ss::SSsummarize(forecastModels)
 
@@ -297,8 +226,6 @@ SSB.Lower <- as.data.frame(forecastSummary[19])   #SSB + 1.96SD
 SSB.Upper <- as.data.frame(forecastSummary[20])   #SSB - 1.96SD
 Fvalue <- as.data.frame(forecastSummary[30])
 Recr <- as.data.frame(forecastSummary[38])
-
-
 
 
 ## --  WRITE ALL IN A DATAFRAME
@@ -321,7 +248,6 @@ dfSTFSummary <-
 #probablility of being below Blim assuming pNormal
 dfSTFSummary$pBlim_2024 <- round(pnorm(Blim, dfSTFSummary$SSB_2024, dfSTFSummary$SSB_2024_SD),3)
 dfSTFSummary$pBlim_2025 <- round(pnorm(Blim, dfSTFSummary$SSB_2025, dfSTFSummary$SSB_2025_SD),3)
-dfSTFSummary
 
 #catches
 for (i in 1:num.scen){
@@ -343,9 +269,9 @@ for (i in 1:num.scen){
 dfSTFSummary
 
 
-save(dfSTFSummary, file=paste0("model/STF/STFSummary",esc,".Rdata"))
+save(dfSTFSummary, file=paste0(path_stf,"/STFSummary.Rdata"))
 # 
-write.csv(dfSTFSummary, paste0("model/STF/STFSummary",esc,".csv"))
+write.csv(dfSTFSummary, paste0(path_stf,"/STFSummary.csv"))
 
 
 # Filtrar los datos entre 1989 y 2026
@@ -417,19 +343,28 @@ legend_labels <- paste0("FMult_", all.scen)
 # Crear el gráfico con todas las variables y facet_wrap para separarlas
 fig1<-ggplot2::ggplot(subset(final_combined_data, Yr < 2026), aes(x = Yr, y = value, color = variable)) +
   geom_point()+
-  geom_line(size = 1) + 
+  geom_line() + 
   # Agregar línea negra desde 1989 hasta 2023 para el primer escenario de SSB
   geom_line(data = subset(final_combined_data, Yr <= 2023 & variable == "replist1"), 
-            aes(x = Yr, y = value), color = "black", size = 1) + 
+            aes(x = Yr, y = value), color = "black", ) + 
   geom_point(data = subset(final_combined_data, Yr <= 2023 & variable == "replist1"), 
            aes(x = Yr, y = value), color = "black") +
   labs(title = "", x = "Año", y = "") +
-  theme_minimal() +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5),legend.position = "right")+
+  theme(plot.title = element_text(size =5),
+        axis.title = element_text(size = 10),
+        axis.text = element_text(size = 8),
+        strip.text = element_text(size = 8),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.title = element_text(size = 10, face = "bold"), 
+        legend.text = element_text(size = 8))+
   theme(legend.title = element_blank()) +
   # Usar una escala manual de colores y aplicar las etiquetas personalizadas de la leyenda
-  scale_color_manual(values = 1:length(FMult), 
+  scale_color_manual(values = rainbow(length(unique(final_combined_data$variable))), 
                      labels = legend_labels) +
   facet_wrap(~variable_group, scales = "free_y")  # Facetear por grupo de variables (SSB, Fvalue, Recruits, Catch)
-
+fig1
+ggsave(file.path(paste0(path_stf,"/fig_forecast.png")), fig1,  width=7, height=4)
 
 

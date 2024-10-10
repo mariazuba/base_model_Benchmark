@@ -1,0 +1,137 @@
+---
+title: "Reference points and short-term forecast for WKBANSP 2024: Anchovy in ICES Subdivision 9a South (ane.27.9a Southern component)"
+author: |
+  María José Zúñiga\thanks{Centro Oceanográfico de Cádiz (COCAD-IEO), CSIC},
+  Margarita María Rincón\thanks{Centro Oceanográfico de Cádiz (COCAD-IEO), CSIC},
+  Fernando Ramos\thanks{Centro Oceanográfico de Cádiz (COCAD-IEO), CSIC}
+output:
+ pdf_document: 
+  keep_tex: true
+  extra_dependencies: ["float"]
+header-includes:
+      - \usepackage{booktabs}
+      - \usepackage{geometry}
+  #fig_width: 6
+    # word_document:
+    # fig_caption: yes
+    # reference_docx: "boot/data/sec_04_template.docx"
+toc: false
+bibliography: "boot/data/report_biblio.bib"
+csl: "boot/data/ices-journal-of-marine-science.csl"
+---
+
+
+
+```{r pkgs, echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(icesAdvice)
+library(flextable)
+library(FLCore)
+library(officedown)
+library(officer)
+library(TAF)
+library(png)
+library(grid)
+library(gridExtra)
+library(tidyverse)
+```
+
+```{r setup, knitr, echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
+
+opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, fig.pos="h",fig.align = 'center')
+
+```
+
+
+```{r load}
+ESC_model<-"S1.0_sigmaR_0.33_h0.8_selP10_qPela1_forecast"
+load(paste0("output/brp/",ESC_model,"/brp.Rdata"))
+```
+
+```{r}
+
+ssb_lastyear<- paste0("$SSB_{",last_year,"}$")
+ln_ssb_lastyear<- paste0("$ln(SSB_{",last_year,"})$")
+
+latex_eq1 <- paste0("$\\sigma = \\sqrt{\\ln\\left(1 + \\left(\\frac{\\sigma_{SSB_{",last_year,"}}}{\\mu_{SSB_{",last_year,"}}}\\right)^2\\right)} = \\sqrt{\\ln\\left(1 + \\left(\\frac{", last_sd, "}{", last_value, "}\\right)^2\\right)} = ", round(sigma, 3), "$")
+latex_eq2 <- paste0("$B_{pa} = e^{(1.645\\sigma)}B_{lim}=",round(1.645*sigma,2),"B_{lim}=",round(1.645*sigma,2),"*",round(Blim,0),"$")
+bpa<-exp(1.645*sigma)*Blim
+
+```
+
+
+# Biological Reference points
+
+The methodology applied was the same decided in WKPELA 2018 (page 286 of WKPELA 2018 report (ICES, 2018)) following ICES guidelines for calculation of reference points for category 1 and 2 stocks and the report of the workshop to review the ICES advisory framework for short lived species ICES WKMSYREF5 2017 (ICES, 2017).
+
+According to the above ICES guidelines and the S-R plot characteristics (Figure \ref{fig:stock-recluta}), this stock component can be classified as a “stock type 5” (i.e. stocks showing no evidence of impaired recruitment or with no clear relation between stock and recruitment (no apparent $S-R$ signal)).
+
+```{r fig.cap="\\label{fig:stock-recluta} ane.27.9a Southern stock. Stock-recruit curve. Point colors indicate year, with warmer colors indicating earlier years and cooler colors in showing later years."}
+include_graphics(file.path("report/run/",ESC_model,"/fig_stock-recluta_0.png"))
+
+
+```
+
+According to this classification, $B_{lim}$ estimation is possible according to the standard method and it is assumed to be equal to $Bloss$ ($B_{lim}=B_{loss}$). The value of $B_{loss}$ for the 9a South anchovy corresponds to the estimated $SSB$ in `r min_year` (`r min_value` t),  hence $B_{lim}$ is set at  `r min_value` t. Note that age 1+ individuals ($B_1+$) are assumed as mature i.e. $B_1+$ class is equivalent to Stock Spawning Biomass (SSB). 
+
+ICES recommends to calculate $B_{pa}$ as follows: $$B_{pa} = e^{(1.645\sigma)} B_{lim},$$
+where  $\sigma$  is the estimated standard deviation of $ln(SSB)$ in the last year of the assessment, accounting for the uncertainty in $SSB$ for the terminal year.
+
+In that case assuming that `r ssb_lastyear`  and its corresponding standard deviation (sd) are the mean and the sd of a normal distribution, `r ln_ssb_lastyear`  is lognormally distributed with standard deviation as follows:
+
+\quad
+ 
+`r latex_eq1`
+
+\quad
+
+Then `r latex_eq2` . According to this, $B_{pa}$ is set at `r round(Bpa,0)` t.
+
+Figure \ref{fig:biological_reference} shows the biological reference points for  spawning biomass.
+
+```{r fig.cap="\\label{fig:biological_reference} ane.27.9a Southern stock. Time series estimated by the model for spawning biomass (in tons) with Biological reference points"}
+include_graphics(file.path(paste0("output/brp/",ESC_model,"/fig_bpr.png")))
+```
+
+
+\newpage
+# Short-term predictions
+
+SS3 includes a forecast module that enables projections for a specified number of years, linked to the model ending conditions, associated uncertainties, and a specified level of fishing intensity. This tool was used to perform the short-term projections.
+
+
+The initial stock size is the stock number-at-age 0-3 estimated at the 1st of January in the final year of the assessment. The spawning stock biomass is estimated on April 1st of the same year, with age 1+ individuals  assumed to be mature. Recruitments (age 0) at the 1st of July estimated in the final year of the assessment. 
+
+Natural mortality-at-age and maturity-at-age are the input values for the final year of the assessment. Natural mortality and maturity-at-age are time invariant and the same as in the assessment and current assessment.  Mean weight-at-age is the average of the last 3 years (years 2021-2023). 
+
+The exploitation pattern is the average of the last 3 years assessment. F status quo is the average of the last 3 years by fleets. Recruitment is predicted from Stock Synthesis stock-recruit relationship, corresponding to recruitment in the forecast years. Short term forecast results including catch in 2024 and SSB in 2025 are predicted for the various levels of fishing mortality in 2024. Table \ref{tb:stf} shows the management options table from the stochastic short-term forecasts at fishing mortalities levels used for the different catch scenario options in the advice.
+
+The forecasts are stochastic, allowing for estimates of uncertainty in SSB. Consequently, the probability of SSB falling below $B_{lim}$ in 2025 is also estimated.
+
+<!-- (**Alternative escenario reclutamiento geometrico ultimos 3 años**) -->
+
+```{r fig.cap="\\label{fig:stf} ane.27.9a Southern stock. Short-term predictions"}
+include_graphics(file.path(paste0("model/stf/",ESC_model,"/fig_forecast.png")))
+```
+
+
+ 
+
+\newpage
+```{r}
+library(kableExtra)
+load(paste0("model/stf/",ESC_model,"/STFSummary.Rdata"))
+dfSTFSummary$FMult<-dfSTFSummary$Val
+dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024/1000000
+dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025/1000000
+
+table<-round(dfSTFSummary[,c(15,7,9,10,3,5,13,14,11)],3)
+names(table)<-c("Mult","F","Rec_2024","Rec_2025","SSB_2024","SSB_2025","pBlim_2024","pBlim_2025","Catch_2024")
+
+kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 1, align = 'c',
+      caption = "\\label{tb:stf} Management options  from the stochastic short-term forecasts at fishing mortalities levels used for the different catch scenario options in the advice") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
+
