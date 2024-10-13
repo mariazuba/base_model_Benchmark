@@ -10,13 +10,13 @@ load(paste0(run_data,"/inputData.RData"))
 
 #'*########################################################################*
 # Filtrar los primeros tres años
-catch_first_3_years <- subset(catch, year <= 1991)
+catch_first_3_years <- subset(catch, year <= 1994)
 
 # Calcular el promedio por trimestre (seas)
 mean_catch_per_seas <- aggregate(catch ~ seas, data = catch_first_3_years, FUN = mean)
 
 # Mostrar el resultado
-mean_catch_per_seas
+round(mean_catch_per_seas,0)
 sum(mean_catch_per_seas$catch)
 #'*########################################################################*
 
