@@ -26,7 +26,10 @@ report<-"report/run/"
 brp<-"output/brp/"
 
 #esc_R<-"GeomRecl" # use geomean / virgin rec
+#vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*1.425,1*3.977150,1*2.900100 ) # "GeomRecl" # use geomean / virgin rec
 esc_R<-"SR" # use BH model
+vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*3.977150,1*3.78,1*5.931000 ) # vector usando SR=BH steepness=0.8
+
 stf<-paste0("model/stf/",esc_R,"/")
 
 run_model<-paste0(model,esc)
@@ -167,9 +170,9 @@ if(borrar==TRUE){
 ###  Using apical F multipliers are exact for Fsq multipliers 
 #'*S1.0_InitCond_sigmaR_SelP_qpriorP*
 #vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*3.977150,1*3.78,1*5.931000 ) # vector usando SR=BH steepness=0.8
-vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*3.78,1*5.931000 ) # vector usando SR=BH steepness=0.8
+#vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*3.78,1*5.931000 ) # vector usando SR=BH steepness=0.8
 #vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*1.425,1*3.977150,1*2.900100 ) # "GeomRecl" # use geomean / virgin rec
-#'*S1.0_4FLEETS_SelECO_RecIndex_Mnewfix*
+#'*S1.0_4FLEETS_SelECO_RecIndex_Mnewfix* no funcionó!
 #vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*6.479687,1*1.90000) # "GeomRecl" # use geomean / virgin rec
 
 FMult <- c(vector0)
@@ -261,6 +264,8 @@ r4ss::run(dir=file.path(path_stf,m), exe="ss3_linux", skipfinished=FALSE, show_i
 #retrieve and summarise outputs
 forecastModels <- r4ss::SSgetoutput(dirvec = file.path(path_stf,c(FMult_names)), getcovar = FALSE)
 save(forecastModels, file=file.path(path_stf,"STF.Rdata"))
+
+
 
 forecastSummary <- r4ss::SSsummarize(forecastModels)
 
@@ -389,7 +394,11 @@ final_combined_data$variable <- sub(".*\\.(replist[0-9]+)", "\\1", final_combine
 
 # Definir las etiquetas de la leyenda
 all.scen <- FMult
-legend_labels <- paste0("FMult_", all.scen)
+#legend_labels <- paste0("FMult_", all.scen)
+
+legend_labels <- c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(all.scen[1:5],1)),
+                          c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(all.scen[6:8],1),
+                                   c("\np(SSB2025<Blim)=5%","=Flim","\np(SSB2025<Blim)=50%"))))
 
 # Crear el gráfico con todas las variables y facet_wrap para separarlas
 fig1<-ggplot2::ggplot(subset(final_combined_data, Yr < 2026), aes(x = Yr, y = value, color = variable)) +
