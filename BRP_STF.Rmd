@@ -97,22 +97,13 @@ include_graphics(file.path(paste0("output/brp/",ESC_model,"/fig_bpr.png")))
 \newpage
 # Short-term predictions
 
-SS3 includes a forecast module that enables projections for a specified number of years, linked to the model ending conditions, associated uncertainties, and a specified level of fishing intensity. This tool was used to perform the short-term projections.
+SS3 includes a forecast module that enables projections for a specified number of years, linked to the model ending conditions, associated uncertainties, and a specified level of fishing intensity. This tool was used to perform the short-term projections. The initial stock size was estimated from the abundance by ages (0-3) on January 1 of the final assessment year, and the spawning stock biomass (SSB) on April 1. Natural mortality and maturity rates remained constant, while selectivity and weight-at-age were averaged over the last three years. The Figures \ref{fig:stf1} and \ref{fig:stf2}, shows  two recruitment projection scenarios were considered: the stock-recruitment relationship used in the model to forecast (Table \ref{tb:stf1}) and the geometric mean of the last three years recruitment (Table \ref{tb:stf3}). The *status quo* fishing mortality ($F_{sq}$ = 0.9) was calculated as the average of the last three years by fleet and season.
 
 
-The initial stock size is the stock number-at-age 0-3 estimated at the 1st of January in the final year of the assessment. The spawning stock biomass is estimated on April 1st of the same year, with age 1+ individuals  assumed to be mature. Recruitments (age 0) at the 1st of July estimated in the final year of the assessment. 
+The probability of SSB in 2025 falling below $B_{lim}$, $p(SSB_{2025} \leq B_{lim})$, was evaluated under different $F_{sq}$ multipliers, using the standard deviation of the model. The evaluated F multipliers ($FMult$) were 0, 1, 1.2, 1.6, and 2. Additionally, an iterative process identified the $FMult$ that would allow achieving a 2024 catch with probabilities of 5% and 50% that SSB in 2025 falls below $B_{lim}$ ($p(SSB_{2025} \leq B_{lim})$ = 0.05 and 0.5, respectively). These multipliers were adjusted according to the projected recruitment scenarios, providing management options based on different levels of fishing mortality. An alternative scenario considered $F_{lim}$ as the fishing mortality that generates a fraction of spawning biomass $B_{lim}/B_0$, based on the stock-recruitment relationship.  Tables \ref{tb:stf2} y \ref{tb:stf4} presents the management options derived from the short-term forecasts, evaluated at different fishing mortality levels, corresponding to the catch scenarios described previously.
 
-Natural mortality-at-age and maturity-at-age are the input values for the final year of the assessment. Natural mortality and maturity-at-age are time invariant and the same as in the assessment and current assessment.  Mean weight-at-age is the average of the last 3 years (years 2021-2023). 
 
-The exploitation pattern is the average of the last 3 years assessment. F status quo is the average of the last 3 years by fleets. Recruitment is predicted from Stock Synthesis stock-recruit relationship, corresponding to recruitment in the forecast years. Short term forecast results including catch in 2024 and SSB in 2025 are predicted for the various levels of fishing mortality in 2024. Table \ref{tb:stf} shows the management options table from the stochastic short-term forecasts at fishing mortalities levels used for the different catch scenario options in the advice.
-
-FBlim:  F that produces an absolute spawning biomass that is a specified fraction, termed relative biomass limit, of the unfished spawning biomass. Note that this is in absolute terms so takes into account the spawner-recruit relationship.
-
-The forecasts are stochastic, allowing for estimates of uncertainty in SSB. Consequently, the probability of SSB falling below $B_{lim}$ in 2025 is also estimated.
-
-<!-- (**Alternative escenario reclutamiento geometrico ultimos 3 años**) -->
-
-```{r fig.cap="\\label{fig:stf} ane.27.9a Southern stock. Short-term predictions"}
+```{r fig.cap="\\label{fig:stf1} ane.27.9a Southern stock. Short-term predictions of catch and SSB evaluated at different fishing mortality levels, under the recruitment projection scenario based on the Beverton-Holt (BH) stock-recruitment relationship."}
 include_graphics(file.path(paste0("model/stf/SR/",ESC_model,"/fig_forecast.png")))
 ```
 
@@ -120,28 +111,84 @@ include_graphics(file.path(paste0("model/stf/SR/",ESC_model,"/fig_forecast.png")
  
 
 \newpage
+
 ```{r}
 library(kableExtra)
 load(paste0("model/stf/SR/",ESC_model,"/STFSummary.Rdata"))
 dfSTFSummary$FMult<-dfSTFSummary$Val
-dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024/1000000
-dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025/1000000
+dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024
+dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025
+dfSTFSummary<-dfSTFSummary %>% mutate(FMult=c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(dfSTFSummary$FMult[1:5],1)),
+                          c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(dfSTFSummary$FMult[6:8],1),
+                                   c("\np(SSB2025<Blim)=5%","=Flim","\np(SSB2025<Blim)=50%")))))
 
-table<-round(dfSTFSummary[,c(15,7,11,9,10,3,5,13,14)],3)
-names(table)<-c("Mult", "F apical2024","Catch2024", "Rec2024", "Rec2025", 
-                "SSB2024", "SSB2025", "p(SSB2024<Blim)", "p(SSB2025<Blim)")
+# Crear la tabla sin intentar redondear la columna 'esc'
+table <- dfSTFSummary[, c("FMult", "F_2024", "Rec_2024")]
 
-kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, align = 'c',
-      caption = "\\label{tb:stf} Short-term forecast management options. Catch and SSB in tonnes") %>%
+# Redondear las columnas numéricas (excepto 'esc')
+table[, -1] <- round(table[, -1], 3)
+
+# Crear la tabla con kable
+kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, align = 'lcc',
+      caption = "\\label{tb:stf1}  The table presents apical fishing mortality (F apical 2024), recruitment (Rec) for 2024  estimated as the Beverton-Holt (BH) stock-recruitment relationship.") %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 
 ```
 
 
-### Recruitment = geometric mean Rvirgin
-```{r fig.cap="\\label{fig:stf} ane.27.9a Southern stock. Short-term predictions"}
+```{r}
+library(kableExtra)
+load(paste0("model/stf/SR/",ESC_model,"/STFSummary.Rdata"))
+dfSTFSummary$FMult<-dfSTFSummary$Val
+dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024
+dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025
+dfSTFSummary<-dfSTFSummary %>% mutate(esc=c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(dfSTFSummary$FMult[1:5],1)),
+                          c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(dfSTFSummary$FMult[6:8],1),
+                                   c("\np(SSB2025<Blim)=5%","=Flim","\np(SSB2025<Blim)=50%")))))
+
+# Crear la tabla sin intentar redondear la columna 'esc'
+table <- dfSTFSummary[, c("esc", "Catch_2024","SSB_2024", "SSB_2025", "pBlim_2024", "pBlim_2025")]
+
+# Redondear las columnas numéricas (excepto 'esc')
+table[, -1] <- round(table[, -1], 3)
+names(table)<-c("esc", "Catch2024","SSB2024", "SSB2025", "p(SSB2024<Blim)", "p(SSB2025<Blim)")
+# Crear la tabla con kable
+kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, align = 'lccccc',
+      caption = "\\label{tb:stf2} Short-term management options evaluated for different F multipliers. The table presents, projected catches 2024 in ton, spawning stock biomass (SSB) for 2024 and 2025 in ton, and the probability of SSB falling below $B_{lim}$ in 2024 and 2025.") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
+\newpage
+
+```{r fig.cap="\\label{fig:stf2} ane.27.9a Southern stock. Short-term predictions of catch and SSB evaluated at different fishing mortality levels, under the recruitment projection scenario based on the geometric mean of the last three years recruitment."}
 include_graphics(file.path(paste0("model/stf/GeomRecl/",ESC_model,"/fig_forecast.png")))
 ```
+
+
+```{r}
+library(kableExtra)
+load(paste0("model/stf/GeomRecl/",ESC_model,"/STFSummary.Rdata"))
+dfSTFSummary$FMult<-dfSTFSummary$Val
+dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024
+dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025
+dfSTFSummary<-dfSTFSummary %>% mutate(FMult=c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(dfSTFSummary$FMult[1:5],1)),
+                          c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(dfSTFSummary$FMult[6:8],1),
+                                   c("\np(SSB2025<Blim)=5%","=Flim","\np(SSB2025<Blim)=50%")))))
+
+# Crear la tabla sin intentar redondear la columna 'esc'
+table <- dfSTFSummary[, c("FMult", "F_2024", "Rec_2024")]
+
+# Redondear las columnas numéricas (excepto 'esc')
+table[, -1] <- round(table[, -1], 3)
+
+# Crear la tabla con kable
+kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, align = 'lcc',
+      caption = "\\label{tb:stf3}  The table presents apical fishing mortality (F apical 2024), recruitment (Rec) for 2024  estimated as the geometric mean of the last three years recruitment") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
 
 ```{r}
 library(kableExtra)
@@ -149,13 +196,20 @@ load(paste0("model/stf/GeomRecl/",ESC_model,"/STFSummary.Rdata"))
 dfSTFSummary$FMult<-dfSTFSummary$Val
 dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024/1000000
 dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025/1000000
+dfSTFSummary<-dfSTFSummary %>% mutate(esc=c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(dfSTFSummary$FMult[1:5],1)),
+                          c(paste0("Fsq",round(dfSTFSummary$F_2024[2],1),"*",round(dfSTFSummary$FMult[6:8],1),
+                                   c("\np(SSB2025<Blim)=5%","=Flim","\np(SSB2025<Blim)=50%")))))
 
-table<-round(dfSTFSummary[,c(15,7,11,9,10,3,5,13,14)],3)
-names(table)<-c("Mult", "F apical2024","Catch2024", "Rec2024", "Rec2025", 
-                "SSB2024", "SSB2025", "p(SSB2024<Blim)", "p(SSB2025<Blim)")
+# Crear la tabla sin intentar redondear la columna 'esc'
+table <- dfSTFSummary[, c("esc", "Catch_2024","SSB_2024", "SSB_2025", "pBlim_2024", "pBlim_2025")]
 
-kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, align = 'c',
-      caption = "\\label{tb:stf} Short-term forecast management options. Catch and SSB in tonnes") %>%
+# Redondear las columnas numéricas (excepto 'esc')
+table[, -1] <- round(table[, -1], 3)
+names(table)<-c("esc", "Catch2024","SSB2024", "SSB2025", "p(SSB2024<Blim)", "p(SSB2025<Blim)")
+# Crear la tabla con kable
+kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, align = 'lccccc',
+      caption = "\\label{tb:stf4} Short-term management options evaluated for different F multipliers. The table presents, projected catches 2024 in ton, spawning stock biomass (SSB) for 2024 and 2025 in ton, and the probability of SSB falling below $B_{lim}$ in 2024 and 2025.") %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 
 ```
+
