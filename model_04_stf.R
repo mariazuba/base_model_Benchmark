@@ -6,7 +6,7 @@
 
 # Load libraries --------------------------------------------------------------
 rm(list=ls())
-
+wd_origin<-getwd()
 library(TAF)
 library(r4ss)
 library(parallel)
@@ -24,7 +24,10 @@ data<-"data/run/"
 output<-"output/run/"
 report<-"report/run/"
 brp<-"output/brp/"
-stf<-"model/stf/"
+
+#esc_R<-"GeomRecl" # use geomean / virgin rec
+esc_R<-"SR" # use BH model
+stf<-paste0("model/stf/",esc_R,"/")
 
 run_model<-paste0(model,esc)
 run_data<-paste0(data,esc)
@@ -64,7 +67,7 @@ nfleet<-dat$dat$Nfleet
 #'*=============================================================================*
 Blim <- Blim
 Bpa <-Bpa
-
+Flim<-Flim #3.4522
 #'*=============================================================================*
 # Short-term forecast ----
 #'*=============================================================================*
@@ -118,22 +121,57 @@ fore_dat_int$F     <- as.vector(as.matrix(Fsqmean[,-which(names(Fsqmean)==c("Sea
 fore_dat_int<-fore_dat_int[fore_dat_int$F != 0, ]
 fore_dat_int
 #####------------
-###  Using apical F multipliers are exact for Fsq multipliers 
-vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*3.977834,1*5.93287)
+
 
 #'*============================================================================*
 ### Fmultipliers with Beverton-Holt 
 #'*============================================================================*
 #'*Multipliers that adjust the value of F to achieve an SSB in 2025 equal to SSBlim*
-start_value1 <- 5.93287
-end_value1 <- 5.93288
+start_value1 <- 7
+end_value1 <- 8
 vector1 <- seq(from = start_value1, to = end_value1, length.out = 5)
-#'*Multipliers that adjust the value of F to achieve F=Flim=3.45389 as reference*
-start_value2 <- 3.977812
-end_value2 <- 3.977855
+
+#'*Multipliers that adjust the value of F to achieve F=Flim=3.4522 as reference*3.977150
+start_value2 <- 6.479687
+end_value2 <- 3.97716
 vector2 <- seq(from = start_value2, to = end_value2, length.out = 5)
 
-#FMult <- c(vector0, vector1, vector2)
+#'*Multipliers that adjust the value of F to achieve p(SSB2025<Blim)=5%*3.78
+start_value3 <- 3.78
+end_value3 <- 3.79
+vector3 <- seq(from = start_value3, to = end_value3, length.out = 5)
+
+
+#'*============================================================================*
+### Fmultipliers with geomean / virgin rec
+#'*============================================================================*
+#'*Multipliers that adjust the value of F to achieve an SSB in 2025 equal to SSBlim p(SSB2025<Blim)=50%*
+start_value4 <- 6.479687 
+end_value4 <- 6.481250
+vector4 <- seq(from = start_value4, to = end_value4, length.out = 5)
+
+#'*Multipliers that adjust the value of F to achieve p(SSB2025<Blim)=5%*
+start_value5 <- 1.9
+end_value5 <- 1.925 
+vector5 <- seq(from = start_value5, to = end_value5, length.out = 5)
+
+
+# descarto folder que no sirven
+borrar=TRUE
+if(borrar==TRUE){
+  carpetas <- list.files(path_stf, full.names = TRUE)
+  carpetas_FMult <- carpetas[grep("^FMult", basename(carpetas))]
+  sapply(carpetas_FMult, unlink, recursive = TRUE)
+  cat("Carpetas eliminadas:", carpetas_FMult, "\n")
+}
+###  Using apical F multipliers are exact for Fsq multipliers 
+#'*S1.0_InitCond_sigmaR_SelP_qpriorP*
+#vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*3.977150,1*3.78,1*5.931000 ) # vector usando SR=BH steepness=0.8
+vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*3.78,1*5.931000 ) # vector usando SR=BH steepness=0.8
+#vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*1.425,1*3.977150,1*2.900100 ) # "GeomRecl" # use geomean / virgin rec
+#'*S1.0_4FLEETS_SelECO_RecIndex_Mnewfix*
+#vector0 <- c(0,1, 1*1.2, 1*1.6, 1*2,1*6.479687,1*1.90000) # "GeomRecl" # use geomean / virgin rec
+
 FMult <- c(vector0)
 
 FMult_names <- paste0("FMult",FMult)
@@ -145,7 +183,8 @@ l_FMult <- length(FMult)
 # Get assessment outputs for geomean recruitment
 year_inter <- endyear+1
 ass.sum <- SSsummarize(SSgetoutput(dirvec=run_model))
-hist.rec <- as.data.frame(ass.sum$recruits) %>% filter(Yr %in% 2021:(year_inter-1)) %>% .[,1]  # all series 2021-2023
+
+hist.rec <- as.data.frame(ass.sum$recruits) %>% filter(Yr %in% 2021:(year_inter-1)) %>% .[,1]  #  2021-2023
 virg.rec <- as.data.frame(ass.sum$recruits) %>% filter(Label == "Recr_Virgin") %>% .[,1]
 
 gmrec <- exp(mean(log(hist.rec)))
@@ -175,8 +214,14 @@ aux=fore_dat_int # F last year
   # input ------------------------------------------------------------------------
   fore$InputBasis<-99 # 99 for F, 2 for Catch
   fore$ForeCatch<-fore_dat # input ForeCatch(orF) data
-  #fore$fcast_rec_option <- 0 #= value*(virgin recruitment) # comment lines to use model BH # how to replace last year assessment!?
-  #fore$fcast_rec_val <- 1#gmrec/virg.rec # geomean / virgin rec # comment lines to use model BH
+  if(esc_R=="GeomRecl"){
+  fore$fcast_rec_option <- 2 #= value*(virgin recruitment) # comment lines to use model BH # how to replace last year assessment!?
+  fore$fcast_rec_val <- gmrec/virg.rec # geomean / virgin rec # comment lines to use model BH
+  } else {
+    fore$fcast_rec_option <- 0 # use the model's recruitment (BH or others)
+    fore$fcast_rec_val <- 1 # no additional adjustments to recruitment
+  }
+  
   
   ## write all forecast files/scenarios
   r4ss::SS_writeforecast(fore, dir = file.path(path_stf,"Forecast_Files"), 
@@ -268,7 +313,13 @@ for (i in 1:num.scen){
 
 dfSTFSummary
 
+diferencia0 <- abs(dfSTFSummary$F_2024 - Flim)
+diferencia1 <- abs(dfSTFSummary$SSB_2025 - Blim)
+diferencia2 <- abs(dfSTFSummary$pBlim_2025 - 0.05)
 
+diferencia0
+diferencia1
+diferencia2
 save(dfSTFSummary, file=paste0(path_stf,"/STFSummary.Rdata"))
 # 
 write.csv(dfSTFSummary, paste0(path_stf,"/STFSummary.csv"))
@@ -367,4 +418,175 @@ fig1<-ggplot2::ggplot(subset(final_combined_data, Yr < 2026), aes(x = Yr, y = va
 fig1
 ggsave(file.path(paste0(path_stf,"/fig_forecast.png")), fig1,  width=7, height=4)
 
-
+#' 
+#' #'*==========================================================================*
+#' ### FUNCION UNIFICADA PARA OBTENER F SSB_2025 = BLIM, P(SSB_2025 < BLIM) <= 0.05 Y F_2024 = FLIM ----
+#' #'*==========================================================================*
+#' 
+#' # Parámetros iniciales comunes
+#' Blim   # Valor objetivo de Blim
+#' Flim   # Valor objetivo de Flim
+#' tolerancia <- 0.05  # Tolerancia para la diferencia entre SSB y Blim
+#' tolerancia_Flim <- 0.01  # Tolerancia para F_2024 respecto a Flim
+#' tolerancia_pBlim <- 0.005  # Tolerancia para la probabilidad de SSB_2025 < Blim
+#' max_iter <- 20  # Número máximo de iteraciones
+#' FMult_inicial <- 3.977834   # Valor inicial para FMult
+#' FMult_incremento <- 0.0001  # Incremento para ajustar FMult
+#' FMult_actual <- FMult_inicial
+#' iteracion <- 1
+#' encontrado <- FALSE
+#' 
+#' # Crear una lista para almacenar los resultados de cada iteración
+#' resultados_iteraciones <- list()
+#' 
+#' # Función para calcular SSB, pBlim, y F_2024 usando un valor de FMult
+#' calcular_valores <- function(FMult, objetivo = "SSB") {
+#'   # Código base para crear los archivos forecast.ss con el F multiplicador
+#'   aux_fore = fore_dat_int
+#'   aux_fore$Year = endyear + 1
+#'   aux_fore$F = FMult * aux$F
+#'   fore_dat = aux_fore
+#'   
+#'   for (j in 2:(Nfor-1)) {
+#'     aux_fore$Year = endyear + j
+#'     aux_fore$F = FMult * aux$F
+#'     fore_dat = rbind(fore_dat, aux_fore)
+#'   }
+#'   aux_fore$Year = endyear + Nfor
+#'   aux_fore$F = FMult * aux$F
+#'   fore_dat = rbind(fore_dat, aux_fore)
+#'   
+#'   # Input forecast file
+#'   fore$InputBasis <- 99  # 99 for F, 2 for Catch
+#'   fore$ForeCatch <- fore_dat  # input ForeCatch(orF) data
+#'   if (esc_R == "GeomRecl") {
+#'     fore$fcast_rec_option <- 2  # value*(virgin recruitment)
+#'     fore$fcast_rec_val <- gmrec / virg.rec
+#'   } else {
+#'     fore$fcast_rec_option <- 0  # use model recruitment
+#'     fore$fcast_rec_val <- 1
+#'   }
+#'   
+#'   # Crear la carpeta del modelo con FMult
+#'   dir.FMult <- file.path(path_stf, paste0("FMult", FMult))
+#'   dir.create(path = dir.FMult, showWarnings = FALSE, recursive = TRUE)
+#'   
+#'   # Escribir los archivos de forecast
+#'   r4ss::SS_writeforecast(fore, dir = dir.FMult,
+#'                          file = "forecast.ss",
+#'                          overwrite = TRUE, verbose = FALSE)
+#'   
+#'   # Copiar archivos necesarios
+#'   file.copy(file.path(run_model, "starter.ss"), file.path(dir.FMult, "starter.ss"))
+#'   file.copy(file.path(run_model, "control.SS"), file.path(dir.FMult, "control.SS"))
+#'   file.copy(file.path(run_model, "data.SS"), file.path(dir.FMult, "data.SS"))
+#'   file.copy(file.path(run_model, "ss3_linux"), file.path(dir.FMult, "ss3_linux"))
+#'   file.copy(file.path(run_model, "wtatage.ss"), file.path(dir.FMult, "wtatage.ss"))
+#'   
+#'   # Ejecutar el modelo
+#'   wd <- dir.FMult
+#'   system(wd)
+#'   system(paste0("chmod 755 ", wd, "/ss3_linux"))
+#'   r4ss::run(dir = wd, exe = "ss3_linux", skipfinished = FALSE, show_in_console = TRUE)
+#'   
+#'   # Obtener el SSB 2025, F_2024 y su desviación estándar
+#'   forecastModels <- r4ss::SSgetoutput(dirvec = dir.FMult, getcovar = FALSE)
+#'   forecastSummary <- r4ss::SSsummarize(forecastModels)
+#'   SSB_2025 <- as.numeric(as.data.frame(forecastSummary[17]) %>% filter(SpawnBio.Yr == 2025) %>% .[,1])
+#'   F_2024 <- as.numeric(as.data.frame(forecastSummary[30]) %>% filter(Fvalue.Yr == 2024) %>% .[,1])
+#'   
+#'   # Dependiendo del objetivo, calcular SSB, pBlim o F_2024
+#'   if (objetivo == "SSB") {
+#'     return(list(SSB_2025 = SSB_2025, FMult = FMult, dir.FMult = dir.FMult))
+#'   } else if (objetivo == "pBlim") {
+#'     SSB_2025_SD <- as.numeric(as.data.frame(forecastSummary[18]) %>% filter(SpawnBioSD.Yr == 2025) %>% .[,1])
+#'     pBlim_2025 <- pnorm(Blim, mean = SSB_2025, sd = SSB_2025_SD)
+#'     return(list(pBlim_2025 = pBlim_2025, SSB_2025 = SSB_2025, SSB_2025_SD = SSB_2025_SD, FMult = FMult, dir.FMult = dir.FMult))
+#'   } else if (objetivo == "Flim") {
+#'     return(list(F_2024 = F_2024, FMult = FMult, dir.FMult = dir.FMult))
+#'   }
+#' }
+#' 
+#' # Ciclo iterativo para ajustar FMult
+#' buscar_FMult <- function(objetivo = "SSB") {
+#'   while (iteracion <= max_iter && !encontrado) {
+#'     # Calcular SSB, pBlim o F_2024 para el FMult actual
+#'     resultado <- calcular_valores(FMult_actual, objetivo)
+#'     
+#'     # Guardar los resultados de la iteración
+#'     if (objetivo == "SSB") {
+#'       SSB_2025 <- resultado$SSB_2025
+#'       diferencia <- abs(SSB_2025 - Blim)
+#'       
+#'       resultados_iteraciones[[iteracion]] <- list(
+#'         iteracion = iteracion,
+#'         FMult = FMult_actual,
+#'         SSB_2025 = SSB_2025,
+#'         diferencia = diferencia
+#'       )
+#'       
+#'       if (diferencia <= tolerancia) {
+#'         encontrado <- TRUE
+#'         cat("FMult encontrado:", FMult_actual, "\nSSB_2025:", SSB_2025, "\n")
+#'       } else {
+#'         if (SSB_2025 > Blim) {
+#'           FMult_actual <- FMult_actual + FMult_incremento
+#'         } else {
+#'           FMult_actual <- FMult_actual - FMult_incremento
+#'         }
+#'       }
+#'       
+#'     } else if (objetivo == "pBlim") {
+#'       pBlim_2025 <- resultado$pBlim_2025
+#'       
+#'       resultados_iteraciones[[iteracion]] <- list(
+#'         iteracion = iteracion,
+#'         FMult = FMult_actual,
+#'         pBlim_2025 = pBlim_2025,
+#'         SSB_2025 = resultado$SSB_2025
+#'       )
+#'       
+#'       if (pBlim_2025 <= pBlim_objetivo + tolerancia_pBlim && pBlim_2025 >= pBlim_objetivo - tolerancia_pBlim) {
+#'         encontrado <- TRUE
+#'         cat("FMult encontrado:", FMult_actual, "\npBlim_2025:", pBlim_2025, "\n")
+#'       } else {
+#'         if (pBlim_2025 > pBlim_objetivo) {
+#'           FMult_actual <- FMult_actual + FMult_incremento
+#'         } else {
+#'           FMult_actual <- FMult_actual - FMult_incremento
+#'         }
+#'       }
+#'       
+#'     } else if (objetivo == "Flim") {
+#'       F_2024 <- resultado$F_2024
+#'       diferencia_Flim <- abs(F_2024 - Flim)
+#'       
+#'       resultados_iteraciones[[iteracion]] <- list(
+#'         iteracion = iteracion,
+#'         FMult = FMult_actual,
+#'         F_2024 = F_2024,
+#'         diferencia_Flim = diferencia_Flim
+#'       )
+#'       
+#'       if (diferencia_Flim <= tolerancia_Flim) {
+#'         encontrado <- TRUE
+#'         cat("FMult encontrado:", FMult_actual, "\nF_2024:", F_2024, "\n")
+#'       } else {
+#'         if (F_2024 > Flim) {
+#'           FMult_actual <- FMult_actual - FMult_incremento
+#'         } else {
+#'           FMult_actual <- FMult_actual + FMult_incremento
+#'         }
+#'       }
+#'     }
+#'     
+#'     iteracion <- iteracion + 1
+#'   }
+#'   
+#'   if (!encontrado) {
+#'     cat("No se encontró un valor de FMult dentro de las iteraciones permitidas.\n")
+#'   }
+#' }
+#'   # Convertir
+#'   #buscar_FMult(objetivo = "pBlim")
+#'    buscar_FMult(objetivo = "SSB")  # Buscar donde SSB_2025 = Blim

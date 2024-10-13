@@ -27,14 +27,16 @@ library(rmarkdown)
 library(icesTAF)
 library(rmarkdown)
 boot<-"boot/initial/data/run/" 
-list.files(boot)
-esc<-"S1.0_sigmaR_0.33_h0.8_selP10_qPela1_forecast" 
+list1<-list.files(boot)
+list1
+esc<- "S1.0_InitCond_sigmaR_SelP_qpriorP"
 write(esc, file = paste0(boot,"Esc.txt"))
 sourceTAF("bootstrap")
 sourceTAF("data")
 sourceTAF("model_01_run")
 sourceTAF("output_01_run")
 sourceTAF("report_01_run")
+
 
 
 sourceTAF("model_02_retro")
@@ -46,7 +48,7 @@ sourceTAF("model_04_stf")
 
 # run reporte.Rmd 
 mkdir("Report_rmd")
-esc<-"S1.0_sigmaR_0.33_h0.8_selP10_qPela1_forecast" 
+esc<-"S1.0_InitCond_sigmaR_SelP_qpriorP"
   render("Report_SS3_quarter_with_age_data_MR_prueba_mod_2.Rmd", 
          output_file = paste0("Report_rmd/Report_",esc,".pdf"))
 

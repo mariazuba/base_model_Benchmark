@@ -6,8 +6,6 @@
 # Authors: María José Zúñiga
 
 # Date: 2024
-
-
 rm(list=ls())
 run_esc<-"boot/data/run/" 
 list.files(run_esc, full.names = TRUE)
@@ -33,30 +31,43 @@ model<-"model/run/"
 data<-"data/run/"
 output<-"output/run/"
 report<-"report/run/"
-brp<-"output/brp/"
-list.files(output)
+
+brp_model<-"model/brp/"
+brp_output<-"output/brp/"
 
 run_model<-paste0(model,esc)
 run_data<-paste0(data,esc)
 run_out<-paste0(output,esc)
 path_rep<-paste0(report,esc)
-path_brp<-paste0(brp,esc)
 
-mkdir(path_brp)
+path_brp_model<-paste0(brp_model,esc)
+path_brp_output<-paste0(brp_output,esc)
+
+mkdir(path_brp_model)
+mkdir(path_brp_output)
 
 
-load(paste0(run_out,"/output.RData"))
+
 load(paste0(run_data,"/inputData.RData")) 
 
+
+file.copy(file.path(run_model, "starter.ss"), file.path(path_brp_model, "starter.ss"))
+file.copy(paste(run_model, "control.SS", sep="/"), paste(path_brp_model, "control.SS", sep="/"))
+file.copy(paste(run_model, "data.SS", sep="/"), paste(path_brp_model, "data.SS", sep="/"))	
+file.copy(paste(run_model, "ss3_linux", sep="/"), paste(path_brp_model, "ss3_linux", sep="/"))
+file.copy(paste(run_model, "wtatage.ss", sep="/"), paste(path_brp_model, "wtatage.ss", sep="/"))
+file.copy(paste(run_model, "forecast.ss", sep="/"), paste(path_brp_model, "forecast.ss", sep="/"))
+# run model
+wd <- path_brp_model
+system(wd)
+system(paste0("chmod 755 ",wd,"/ss3_linux")) 
+r4ss::run(dir=wd, exe="ss3_linux", skipfinished=FALSE, show_in_console =T)
+
 #read forecast
-fore <- r4ss::SS_readforecast(file = file.path(run_model, "forecast.ss"),verbose = FALSE)
-
-
+fore <- r4ss::SS_readforecast(file = file.path(path_brp_model, "forecast.ss"),verbose = FALSE)
 #read in assessment ouput
-replist <- output
+replist <- r4ss::SS_output(dir = path_brp_model)
 stdreptlist<-data.frame(replist$derived_quants[,1:3])
-
-
 
 # Define the range of years to include
 start_year <- dat$dat$styr
@@ -136,13 +147,29 @@ ratioBtarget<-Blim/Bvirgin
 ratioBtarget2<-Blim/SSBunfished
 SSB_Btgt<-replist$derived_quants["SSB_Btgt","Value"] #SSB_Btgt=Blim
 SPR_Btgt<-replist$derived_quants["SPR_Btgt","Value"] 
-Flim <- replist$derived_quants["annF_Btgt","Value"] #annF_Btgt=Flim
+Flim0 <- replist$derived_quants["annF_Btgt","Value"] #annF_Btgt=Flim
+Flim0
 
-#fore$Btarget
-r4ss::SS_writeforecast(fore, dir = file.path(path_stf,"Forecast_Files"), 
-                       file = paste0("Forecast",FMult_names[i], ".ss"), 
+
+#'*##########################################################################*
+#' Hacer ciclo for
+fore$Btarget <-ratioBtarget2
+
+r4ss::SS_writeforecast(fore, dir = path_brp_model, 
+                       file = "forecast.ss", 
                        overwrite = TRUE, verbose = FALSE)
+# run model
+wd <- path_brp_model
+system(wd)
+system(paste0("chmod 755 ",wd,"/ss3_linux")) 
+r4ss::run(dir=wd, exe="ss3_linux", skipfinished=FALSE, show_in_console =T)
+replist2 <- r4ss::SS_output(dir = path_brp_model)
 
+Blim/replist2$derived_quants["SSB_Btgt","Value"] #SSB_Btgt=Blim
+Flim<-replist2$derived_quants["annF_Btgt","Value"] #annF_Btgt=Flim
+Flim
+#'*##########################################################################*
+#'
 save(min_value,min_sd,min_year,
      last_year,last_value,last_sd,
      sigma,Blim,Bpa, 

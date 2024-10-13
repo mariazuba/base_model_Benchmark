@@ -44,7 +44,7 @@ opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE, fig.pos="h",fig.align =
 
 
 ```{r load}
-ESC_model<-"S1.0_sigmaR_0.33_h0.8_selP10_qPela1_forecast"
+ESC_model<-"S1.0_InitCond_sigmaR_SelP_qpriorP"
 load(paste0("output/brp/",ESC_model,"/brp.Rdata"))
 ```
 
@@ -106,12 +106,14 @@ Natural mortality-at-age and maturity-at-age are the input values for the final 
 
 The exploitation pattern is the average of the last 3 years assessment. F status quo is the average of the last 3 years by fleets. Recruitment is predicted from Stock Synthesis stock-recruit relationship, corresponding to recruitment in the forecast years. Short term forecast results including catch in 2024 and SSB in 2025 are predicted for the various levels of fishing mortality in 2024. Table \ref{tb:stf} shows the management options table from the stochastic short-term forecasts at fishing mortalities levels used for the different catch scenario options in the advice.
 
+FBlim:  F that produces an absolute spawning biomass that is a specified fraction, termed relative biomass limit, of the unfished spawning biomass. Note that this is in absolute terms so takes into account the spawner-recruit relationship.
+
 The forecasts are stochastic, allowing for estimates of uncertainty in SSB. Consequently, the probability of SSB falling below $B_{lim}$ in 2025 is also estimated.
 
 <!-- (**Alternative escenario reclutamiento geometrico ultimos 3 años**) -->
 
 ```{r fig.cap="\\label{fig:stf} ane.27.9a Southern stock. Short-term predictions"}
-include_graphics(file.path(paste0("model/stf/",ESC_model,"/fig_forecast.png")))
+include_graphics(file.path(paste0("model/stf/SR/",ESC_model,"/fig_forecast.png")))
 ```
 
 
@@ -120,7 +122,7 @@ include_graphics(file.path(paste0("model/stf/",ESC_model,"/fig_forecast.png")))
 \newpage
 ```{r}
 library(kableExtra)
-load(paste0("model/stf/",ESC_model,"/STFSummary.Rdata"))
+load(paste0("model/stf/SR/",ESC_model,"/STFSummary.Rdata"))
 dfSTFSummary$FMult<-dfSTFSummary$Val
 dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024/1000000
 dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025/1000000
@@ -136,3 +138,24 @@ kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, al
 ```
 
 
+### Recruitment = geometric mean Rvirgin
+```{r fig.cap="\\label{fig:stf} ane.27.9a Southern stock. Short-term predictions"}
+include_graphics(file.path(paste0("model/stf/GeomRecl/",ESC_model,"/fig_forecast.png")))
+```
+
+```{r}
+library(kableExtra)
+load(paste0("model/stf/GeomRecl/",ESC_model,"/STFSummary.Rdata"))
+dfSTFSummary$FMult<-dfSTFSummary$Val
+dfSTFSummary$Rec_2024<-dfSTFSummary$Rec_2024/1000000
+dfSTFSummary$Rec_2025<-dfSTFSummary$Rec_2025/1000000
+
+table<-round(dfSTFSummary[,c(15,7,11,9,10,3,5,13,14)],3)
+names(table)<-c("Mult", "F apical2024","Catch2024", "Rec2024", "Rec2025", 
+                "SSB2024", "SSB2025", "p(SSB2024<Blim)", "p(SSB2025<Blim)")
+
+kable(table, format = "latex", booktabs = TRUE, longtable = TRUE, digits = 2, align = 'c',
+      caption = "\\label{tb:stf} Short-term forecast management options. Catch and SSB in tonnes") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
