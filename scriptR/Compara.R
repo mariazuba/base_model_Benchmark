@@ -133,7 +133,7 @@ Qdata$Fleet_name <- factor(Qdata$Fleet_name,
 # Reordenar la columna .id en orden descendente
 Qdata$.id <- Qdata$.id <- factor(Qdata$.id,
                                  levels = ESCs)
-
+tail(Qdata,n=100)
 
 # Crear el gráfico
 base<-"S1.0_4FLEETS_SelECO_RecIndex_Mnewfix"
@@ -175,7 +175,7 @@ g4 <- rasterGrob(img4, interpolate=TRUE)
 # Organizar las imágenes en una cuadrícula
 fig222<-grid.arrange(g1, g2, g3, g4, ncol=1)
 
-ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_escIndices.png")), fig222,  width=5, height=8)
+ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_escIndices.png")), fig222,  width=5, height=7)
 
 # Comparison SSB, Fapical, Recruitment ----
 path_mod<-"report/run/comparison/Qprior"
@@ -189,7 +189,7 @@ g2 <- rasterGrob(img2, interpolate=TRUE)
 g3 <- rasterGrob(img3, interpolate=TRUE)
 # Organizar las imágenes en una cuadrícula
 fig223<-grid.arrange(g3, g1,g2, ncol=1)
-ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_escVarP.png")), fig223,  width=5, height=8)
+ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_escVarP.png")), fig223,  width=5, height=7)
 
 
 
@@ -216,7 +216,7 @@ fig224<-grid.arrange(title1, g1,
                      title2, g2, 
                      ncol=1, 
                      heights=c(0.5, 8, 0.5, 8))
-ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_selectivity.png")), fig224,  width=5, height=8)
+ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_selectivity.png")), fig224,  width=5, height=7)
 
 # Comparison selectivity ----
 path_mod<-"report/run/comparison/Qprior"
@@ -235,7 +235,7 @@ fig225<-grid.arrange(title1, g1,
                      title2, g2, 
                      ncol=1, 
                      heights=c(0.5, 8, 0.5, 8))
-ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_retrospective.png")), fig225,  width=5, height=8)
+ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_retrospective.png")), fig225,  width=5, height=7)
 
 
 # Comparison mean age ----
@@ -263,6 +263,44 @@ fig226<-grid.arrange(
   arrangeGrob(g2, g4, ncol=2),  # Tercera fila con imágenes de la segunda columna
   nrow=3, heights=c(0.5, 4, 8)  # Ajuste de las alturas para títulos e imágenes
 )
-ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_meanage.png")), fig226,  width=5, height=8)
+ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_meanage.png")), fig226,  width=5, height=7)
+
+
+
+# Comparison sigmaR ----
+path_mod<-"report/run/comparison/Qprior"
+
+title1 <- textGrob("S1.0_4FLEETS_SelECO_RecIndex_Mnewfix", gp=gpar(fontsize=8, fontface="bold"))
+title2 <- textGrob("S1.0_InitCond_sigmaR_SelP_qpriorP", gp=gpar(fontsize=8, fontface="bold"))
+
+# Cargar las imágenes
+list.files(file.path("report/run/S1.0_4FLEETS_SelECO_RecIndex_Mnewfix"))
+
+img1 <- png::readPNG(file.path(paste0("report/run/S1.0_4FLEETS_SelECO_RecIndex_Mnewfix/","fig_recdevs2_varcheck.png")))
+img2 <- png::readPNG(file.path(paste0("report/run/S1.0_4FLEETS_SelECO_RecIndex_Mnewfix/","fig_Recdevs.png")))
+img3 <- png::readPNG(file.path(paste0("report/run/S1.0_4FLEETS_SelECO_RecIndex_Mnewfix/","fig_stock-recluta.png")))
+img4 <- png::readPNG(file.path(paste0("report/run/S1.0_InitCond_sigmaR_SelP_qpriorP/","fig_recdevs2_varcheck.png")))
+img5 <- png::readPNG(file.path(paste0("report/run/S1.0_InitCond_sigmaR_SelP_qpriorP/","fig_Recdevs.png")))
+img6 <- png::readPNG(file.path(paste0("report/run/S1.0_InitCond_sigmaR_SelP_qpriorP/","fig_stock-recluta.png")))
+
+# Convertir a grobs (graphic objects) y ajustar tamaño a una dimensión común
+g1 <- rasterGrob(img1, width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+g2 <- rasterGrob(img2, width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+g3 <- rasterGrob(img3, width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+g4 <- rasterGrob(img4, width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+g5 <- rasterGrob(img5, width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+g6 <- rasterGrob(img6, width = unit(1, "npc"), height = unit(1, "npc"), interpolate = TRUE)
+
+# Organizar las imágenes en una cuadrícula con tamaños iguales
+fig227 <- grid.arrange(
+  arrangeGrob(title1, title2, ncol=2),  # Primera fila con títulos
+  arrangeGrob(g1, g4, ncol=2),  # Segunda fila con imágenes de la primera columna
+  arrangeGrob(g2, g5, ncol=2),  # Tercera fila con imágenes de la segunda columna
+  arrangeGrob(g3, g6, ncol=2),  # Tercera fila con imágenes de la segunda columna
+  nrow=4, heights=c(0.5, 4, 3,4)  # Ajuste de las alturas para títulos e imágenes
+)
+
+fig227
+ggsave(file.path(paste0("report/run/comparison/",folder,"/fig_sigmaR.png")), fig227,  width=7, height=7)
 
 

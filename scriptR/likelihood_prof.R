@@ -10,7 +10,7 @@
 boot<-"boot/initial/data/run/"
 list.files(boot)
 #base2<-"S1.0_4FLEETS_SelECO_RecIndex_Mnewfix"
-base2<-"S1.3_sigmaR_0.3"
+base2<-"S1.0_InitCond_sigmaR_SelP_qpriorP"   
 dir<-paste0("model/run/" ,base2)
 #dir_simple_small <- file.path("C:/USE/Leire/ICES/2024/WKBANSP/assessment_model/ss3_ane8/runs_fixed/run0_natMestim3kte")
 #SS_parlines(ctlfile = "C:/USE/Leire/ICES/2024/WKBANSP/assessment_model/ss3_ane8/runs_fixed/run0_natMestim3kte/control.ss_new")
@@ -100,10 +100,14 @@ par_table<- as.numeric(profilesummary[["likelihoods"]][1,1:n])
 # SSplotComparisons(profilesummary, legendlabels = paste("h =", par_table),subplots=1)
 
 # plot profile using summary created above
-results <- SSplotProfile(profilesummary, # summary object
+png("Perfil_h.png", width = 400, height = 400)
+ SSplotProfile(profilesummary, # summary object
                          profile.string = "SR_BH_steep", # substring of profile parameter
-                         profile.label = "Stock-recruit steepness (h)"
+                         profile.label = "Stock-recruit steepness (h)",
+               components = c("TOTAL", "Catch",  "Survey",  "Age_comp"),
+               component.labels = c("Total", "Catch",  "Index data",  "Age data"),
 ) # axis label
+ dev.off()
 # 
 
 
